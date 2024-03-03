@@ -1,0 +1,122 @@
+version: '3.8'
+
+services:
+  free2fa_setup:
+    image: clllagob/free2faplus:setup_latest
+    volumes:
+      - free2fa_ca_certs:/certs/rootca
+      - free2fa_ca_private:/certs/rootpca
+      - free2fa_admin_api_certs:/certs/free2fa_admin_api
+      - free2fa_admin_html_certs:/certs/free2fa_admin_html
+      - free2fa_api_certs:/certs/free2fa_api
+      - free2fa_otp_reg_certs:/certs/free2fa_otp_reg
+    environment:
+      - CA_EXPIRY_DAYS=${CA_EXPIRY_DAYS}
+      - ADDITIONAL_DNS_NAME_FOR_ADMIN_HTML=${ADDITIONAL_DNS_NAME_FOR_ADMIN_HTML}
+    networks:
+      - free2fa_ca_network
+    healthcheck:
+      test: ["CMD-SHELL", "[ -f /certs/rootca/ca.crt ]"]
+      interval: 1s
+      timeout: 5s
+      retries: 120
+
+  free2fa_admin_html:
+    restart: unless-stopped
+    image: clllagob/free2faplus:admin_html_latest
+    volumes:
+      - free2fa_admin_html_certs:/etc/nginx/certs
+      - free2fa_ca_certs:/usr/local/share/ca-certificates/
+    networks:
+       - free2fa_admin_network
+       - free2fa_otp_network 
+    depends_on:
+      free2fa_admin_api:
+        condition: service_started
+    ports:
+       - "443:443"
+
+  free2fa_admin_api:
+    restart: unless-stopped
+    image: clllagob/free2faplus:admin_api_latest
+    environment:
+      - ADMIN_SECRET_KEY=${ADMIN_SECRET_KEY}
+      - RESET_PASSWORD=${RESET_PASSWORD}
+      - ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES}
+    volumes:
+      - free2fa_db:/opt/db
+      - free2fa_admin_api_certs:/app/certs
+    networks:
+      - free2fa_admin_network
+      - free2fa_ca_network
+    depends_on:
+      free2fa_setup:
+        condition: service_healthy
+
+  free2fa_otp_reg:
+    restart: unless-stopped
+    image: clllagob/free2faplus:otp_reg_latest
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      - OTP_SESSION_SECRET_KEY=${OTP_SESSION_SECRET_KEY}
+      - MAX_LOGIN_ATTEMPTS=${MAX_LOGIN_ATTEMPTS}
+      - BLOCK_DURATION_MINUTES=${BLOCK_DURATION_MINUTES}
+      - FREE2FA_TELEGRAM_BOT_LANGUAGE=${FREE2FA_TELEGRAM_BOT_LANGUAGE}
+      - OTP_RADIUS_SECRET=${OTP_RADIUS_SECRET}
+      - OTP_FIRM_INFO=${OTP_FIRM_INFO}
+      - FREE2FA_TIMEOUT=${FREE2FA_TIMEOUT}
+    volumes:
+      - free2fa_db:/opt/db
+      - free2fa_otp_reg_certs:/app/certs
+    networks:
+      free2fa_otp_network:
+        ipv4_address: 172.254.254.245
+    depends_on:
+      free2fa_setup:
+        condition: service_healthy
+
+  free2fa_api:
+    restart: unless-stopped
+    image: clllagob/free2faplus:api_latest
+    environment:
+      - FREE2FA_TELEGRAM_BOT_TOKEN=${FREE2FA_TELEGRAM_BOT_TOKEN}
+      - FREE2FA_TELEGRAM_BOT_LANGUAGE=${FREE2FA_TELEGRAM_BOT_LANGUAGE}
+      - FREE2FA_AUTO_REG_ENABLED=${FREE2FA_AUTO_REG_ENABLED}
+      - FREE2FA_BYPASS_ENABLED=${FREE2FA_BYPASS_ENABLED}
+      - FREE2FA_TIMEOUT=${FREE2FA_TIMEOUT}
+      - ALLOW_API_FAILURE_PASS=${ALLOW_API_FAILURE_PASS}
+    volumes:
+      - free2fa_db:/opt/db
+      - free2fa_api_certs:/app/certs
+      - free2fa_ca_certs:/usr/local/share/ca-certificates/
+    networks:
+      - free2fa_network
+    depends_on:
+      free2fa_setup:
+        condition: service_healthy
+    ports:
+      - "5000:5000"
+
+volumes:
+  free2fa_db:
+  free2fa_admin_api_certs:
+  free2fa_admin_html_certs:
+  free2fa_otp_reg_certs:
+  free2fa_ca_certs:
+  free2fa_ca_private:
+  free2fa_api_certs:
+
+networks:
+  free2fa_admin_network:
+    driver: bridge
+  free2fa_network:
+    driver: bridge
+  free2fa_ca_network:
+    driver: bridge
+  free2fa_otp_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.254.254.0/24
+

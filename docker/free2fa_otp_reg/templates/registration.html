@@ -1,0 +1,29 @@
+<!-- templates/registration.html -->
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="verify-url" content="{{ url_for('reg.verify') }}">
+    <meta name="form-error-message" content="{{ loc.MESSAGES['form_error'] }}">
+    <title>{{ loc.MESSAGES["welcome"] }}</title>
+    <link rel="stylesheet" href="{{ url_for('reg.static', filename='style.css') }}">
+</head>
+
+<body>
+    <h2>{{ loc.MESSAGES['user_reg'] }} {{ login }}</h2>
+    <p>{{ loc.MESSAGES['action_to_do'] }}</p>
+    <img src="{{ url_for('reg.qr_code') }}" alt="QR Code">
+    <p>{{ loc.MESSAGES['action_to_finish'] }} </p>
+    <form action="{{ url_for('reg.verify') }}" method="post">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="login" value="{{ login }}">
+        <input type="text" name="otp">
+        <input type="submit" value="{{ loc.MESSAGES['submit'] }}" class="button">
+    </form>
+    <script src="{{ url_for('reg.static', filename='jquery-3.7.1.js') }}"></script>
+    <script src="{{ url_for('reg.static', filename='form-handler.js') }}"></script>
+</body>
+
+</html>

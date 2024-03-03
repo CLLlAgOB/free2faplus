@@ -1,0 +1,21 @@
+<!-- templates/login.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ loc.MESSAGES["welcome"] }}</title>
+    <link rel="stylesheet" href="{{ url_for('reg.static', filename='style.css') }}">
+</head>
+<body>
+<form method="post">
+    {{ form.hidden_tag() }}
+    {% if error_message %}
+    <p>{{ error_message }}</p>
+    {% endif %}
+    {{ form.username.label }} {{ form.username(size=32) }}<br>
+    {{ form.password.label }} {{ form.password(size=32) }}<br>
+    <input type="submit" class="button" value="{{ loc.MESSAGES["Sign_in"] }}">
+</form>
+</body>
+</html>
